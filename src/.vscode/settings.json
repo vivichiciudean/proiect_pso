@@ -1,0 +1,30 @@
+{
+    "files.associations": {
+        "synch.h": "c",
+        "filesys.h": "c",
+        "cstdlib": "c",
+        "syscall-nr.h": "c",
+        "interrupt.h": "c",
+        "thread.h": "c",
+        "*.inc": "c",
+        "atomic": "c",
+        "*.tcc": "c",
+        "fstream": "c",
+        "sstream": "c",
+        "iosfwd": "c",
+        "istream": "c",
+        "limits": "c",
+        "streambuf": "c",
+        "exception": "c",
+        "new": "c",
+        "ostream": "c",
+        "unordered_map": "c",
+        "unordered_set": "c",
+        "vaddr.h": "c",
+        "file.h": "c",
+        "string_view": "c",
+        "main.h": "c",
+        "pagedir.h": "c",
+        "typeinfo": "c"
+    }
+}
