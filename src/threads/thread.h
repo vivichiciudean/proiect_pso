@@ -6,6 +6,14 @@
 #include <stdint.h>
 #include "synch.h"
 
+//added by Alex
+#ifdef VM
+#include <hash.h>
+#include "filesys/filesys.h"
+#define MAX_OPEN_FILES	10
+#endif
+
+
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -106,6 +114,17 @@ struct thread
     struct list child_processes;           //list of the procceses this thread has created
     struct semaphore sema_proc_exec; 
     struct semaphore sema_proc_wait;
+#endif
+
+//Added by Alex
+#ifdef VM
+	struct hash supl_pt;			// Used to associate additional information with a virtual page
+									// Do not need to keep information about all possible virtual pages,
+									// like the normal page table, but only about the really used ones
+	struct file *exec_file;			// The opened executable file to be used when needed
+									// to lazily load pages from when page faults will be generated
+
+	struct file **open_files;
 #endif
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

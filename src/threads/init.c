@@ -31,6 +31,11 @@
 #else
 #include "tests/threads/tests.h"
 #endif
+//added by Vivi
+#ifdef VM
+#include "vm/swap.h"
+#include "vm/frame.h"
+#endif
 #ifdef FILESYS
 #include "devices/block.h"
 #include "devices/ide.h"
@@ -64,6 +69,12 @@ static char **read_command_line (void);
 static char **parse_options (char **argv);
 static void run_actions (char **argv);
 static void usage (void);
+
+//added by Vivi
+#ifdef VM
+extern size_t user_pages;
+extern size_t kernel_pages;
+#endif
 
 #ifdef FILESYS
 static void locate_block_devices (void);
@@ -99,6 +110,13 @@ main (void)
   palloc_init (user_page_limit);
   malloc_init ();
   paging_init ();
+//added by Vivi
+#ifdef VM
+  frame_table_init(user_pages-1);
+#endif
+
+  kernel_pool_bitmap_dump();
+  user_pool_bitmap_dump();
 
   /* Segmentation. */
 #ifdef USERPROG
@@ -125,6 +143,8 @@ main (void)
   /* Initialize file system. */
   ide_init ();
   locate_block_devices ();
+  //added by Vivi
+  swap_init();
   filesys_init (format_filesys);
 #endif
 

@@ -40,6 +40,10 @@ static void init_pool (struct pool *, void *base, size_t page_cnt,
                        const char *name);
 static bool page_from_pool (const struct pool *, void *page);
 
+//added by Vivi
+size_t user_pages;
+size_t kernel_pages;
+
 /* Initializes the page allocator.  At most USER_PAGE_LIMIT
    pages are put into the user pool. */
 void
@@ -49,8 +53,7 @@ palloc_init (size_t user_page_limit)
   uint8_t *free_start = ptov (1024 * 1024);
   uint8_t *free_end = ptov (init_ram_pages * PGSIZE);
   size_t free_pages = (free_end - free_start) / PGSIZE;
-  size_t user_pages = free_pages / 2;
-  size_t kernel_pages;
+  user_pages = free_pages / 2;
   if (user_pages > user_page_limit)
     user_pages = user_page_limit;
   kernel_pages = free_pages - user_pages;
@@ -179,4 +182,27 @@ page_from_pool (const struct pool *pool, void *page)
   size_t end_page = start_page + bitmap_size (pool->used_map);
 
   return page_no >= start_page && page_no < end_page;
+}
+
+
+// Added by Adrian Colesa - VM
+/*
+ * Dump the kernel pool bitmap to have an idea about the allocated pages
+ */
+void
+kernel_pool_bitmap_dump()
+{
+	printf("\nThe bitmap of \"kernel pool\" is: \n");
+	bitmap_dump(kernel_pool.used_map);
+}
+
+// Added by Adrian Colesa - VM
+/*
+ * Dump the user pool bitmap to have an idea about the allocated pages
+ */
+void
+user_pool_bitmap_dump()
+{
+	printf("\nThe bitmap of \"user pool\" is: \n");
+	bitmap_dump(user_pool.used_map);
 }

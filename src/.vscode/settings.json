@@ -25,6 +25,7 @@
         "string_view": "c",
         "main.h": "c",
         "pagedir.h": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "block.h": "c"
     }
 }

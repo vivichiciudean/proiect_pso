@@ -17,6 +17,16 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#ifdef VM
+#include "vm/frame.h"
+#endif
+
+//Added by Alex
+#ifdef VM
+static unsigned page_hash (const struct hash_elem *p_, void *aux UNUSED);
+static bool page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED);
+struct supl_pte* page_lookup (const void *address);
+#endif
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -62,6 +72,13 @@ start_process (void *file_name_)
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
+//Added by Alex
+#ifdef VM
+  hash_init(&thread_current()->supl_pt, page_hash, page_less, NULL);
+  printf("Suplimental page (hash) table initialized\n");
+
+  thread_current()->exec_file = NULL;
+#endif
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -83,6 +100,19 @@ start_process (void *file_name_)
   palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
+
+//added by Alex
+#ifdef VM
+  thread_current()->open_files = malloc(MAX_OPEN_FILES*sizeof(struct file*));
+  if (thread_current()->open_files == NULL) {
+	  success = 0;
+	  thread_exit();
+  } else {
+	  int fd;
+	  for (fd=0; fd<MAX_OPEN_FILES; fd++)
+		  thread_current()->open_files[fd] = NULL;
+  }
+#endif
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -158,6 +188,12 @@ process_exit (void)
   // wake up the parent waiting for this lock
   sema_up(&(thread_current()->sema_proc_wait));
   //Alex
+
+  //Added by Alex
+#ifdef VM
+  if (cur->exec_file != NULL)
+	  file_close (cur->exec_file);
+#endif
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -374,6 +410,20 @@ load (const char *file_name, void (**eip) (void), void **esp)
         }
     }
 
+//Added by Alex
+#ifdef VM
+  struct hash_iterator hash_iter;
+  //printf("[load] The supplemental page table contents:\n");
+  hash_first (&hash_iter, &thread_current()->supl_pt);
+  while (hash_next (&hash_iter))
+  {
+	  struct supl_pte *spte = hash_entry (hash_cur (&hash_iter), struct supl_pte, he);
+	  //printf("[load] spte->virt_page_addr=0x%x, spte->virt_page_no=%d, spte->ofs=%d, spte->page_read_bytes=%d, spte->page_zero_bytes=%d, spte->writable=%d\n", spte->virt_page_addr, spte->virt_page_no, spte->ofs, spte->page_read_bytes, spte->page_zero_bytes, spte->writable);
+  }
+
+  printf("\n\n[load] Setup the STACK segment\n");
+#endif
+
   /* Set up stack. */
   if (!setup_stack (esp))
     goto done;
@@ -434,7 +484,13 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
+//Added by Alex
+#ifdef VM
+ if (success == true)
+	thread_current()->exec_file = file;
+#else
+	file_close (file);
+#endif
   return success;
 }
 
@@ -505,9 +561,13 @@ static bool
 load_segment (struct file *file, off_t ofs, uint8_t *upage,
               uint32_t read_bytes, uint32_t zero_bytes, bool writable) 
 {
+  struct supl_pte *spte;
+
   ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
+
+  off_t crt_ofs = ofs;
 
   file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
@@ -518,8 +578,29 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
+#ifdef VM
+      spte = malloc(sizeof(struct supl_pte));
+      spte->virt_page_addr = upage;
+      spte->virt_page_no = ((unsigned int) upage)/PGSIZE;
+      spte->ofs = crt_ofs;
+      spte->page_read_bytes = page_read_bytes;
+      spte->page_zero_bytes = page_zero_bytes;
+      spte->writable = writable;
+      spte->swapped_out = false;
+      hash_insert (&thread_current()->supl_pt, &spte->he);
+
+      printf("[load_segment] spte->virt_page_addr=0x%x, spte->virt_page_no=%d, spte->ofs=%d, spte->page_read_bytes=%d, spte->page_zero_bytes=%d, spte->writable=%d\n",
+    		  spte->virt_page_addr, spte->virt_page_no, spte->ofs, spte->page_read_bytes, spte->page_zero_bytes, spte->writable);
+
+      crt_ofs += page_read_bytes;
+#else
       /* Get a page of memory. */
-      uint8_t *kpage = palloc_get_page (PAL_USER);
+#ifdef VM
+      uint8_t *kpage = frame_alloc(PAL_USER, spte);
+#else
+      uint8_t *kpage = palloc_get_page(PAL_USER);
+#endif
+
       if (kpage == NULL)
         return false;
 
@@ -532,11 +613,12 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       memset (kpage + page_read_bytes, 0, page_zero_bytes);
 
       /* Add the page to the process's address space. */
-      if (!install_page (upage, kpage, writable)) 
+      if (!install_page (upage, kpage, writable))
         {
           palloc_free_page (kpage);
           return false; 
         }
+#endif
 
       /* Advance. */
       read_bytes -= page_read_bytes;
@@ -554,7 +636,25 @@ setup_stack (void **esp)
   uint8_t *kpage;
   bool success = false;
 
+//Added by Alex and Vivi
+#ifdef VM
+  struct supl_pte *spte;
+  spte = malloc(sizeof(struct supl_pte));
+  spte->virt_page_addr = ((uint8_t *) PHYS_BASE) - PGSIZE;
+  spte->virt_page_no = ((unsigned int) spte->virt_page_addr)/PGSIZE;
+  spte->ofs = -1;
+  spte->page_read_bytes = 0;
+  spte->page_zero_bytes = 0;
+  spte->writable = true;
+  spte->swapped_out = false;
+  hash_insert (&thread_current()->supl_pt, &spte->he);
+  printf("[setup_stack] spte->virt_page_addr=0x%x, spte->virt_page_no=%d, spte->ofs=%d, spte->page_read_bytes=%d, spte->page_zero_bytes=%d, spte->writable=%d\n",
+      		  spte->virt_page_addr, spte->virt_page_no, spte->ofs, spte->page_read_bytes, spte->page_zero_bytes, spte->writable);
+
+  kpage = frame_alloc (PAL_USER | PAL_ZERO, spte);
+#else
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+#endif
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
@@ -563,7 +663,11 @@ setup_stack (void **esp)
         //original
         *esp = PHYS_BASE;
       } else
-        palloc_free_page (kpage);
+#ifdef VM
+    	frame_free(kpage);
+#else
+      palloc_free_page (kpage);
+#endif
     }
   return success;
 }
@@ -587,3 +691,132 @@ install_page (void *upage, void *kpage, bool writable)
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
 }
+
+#ifdef VM
+static unsigned
+page_hash (const struct hash_elem *p_, void *aux UNUSED)
+{
+	const struct supl_pte *p = hash_entry (p_, struct supl_pte, he);
+	return hash_int (p->virt_page_no);
+}
+
+/* Returns true if page a precedes page b. */
+static bool
+page_less (const struct hash_elem *a_, const struct hash_elem *b_,
+void *aux UNUSED)
+{
+	const struct supl_pte *a = hash_entry (a_, struct supl_pte, he);
+	const struct supl_pte *b = hash_entry (b_, struct supl_pte, he);
+
+	return a->virt_page_no < b->virt_page_no;
+}
+
+
+/*
+ * Returns the supplemental page table entry, containing the given virtual address,
+ * or a null pointer if no such page exists.
+*/
+struct supl_pte *
+page_lookup (const void *pg_no)
+{
+	struct supl_pte spte;
+	struct hash_elem *e;
+
+	spte.virt_page_no = pg_no;
+	e = hash_find (&thread_current()->supl_pt, &spte.he);
+
+	return e != NULL ? hash_entry (e, struct supl_pte, he) : NULL;
+}
+
+bool load_page_for_address(uint8_t *upage)
+{
+	struct supl_pte *spte;
+	uint32_t pg_no = ((uint32_t) upage) / PGSIZE;
+
+	printf("[load_page] Looking for page no %d (address 0x%x) in the supplemental hash table\n", pg_no, upage);
+
+	spte = page_lookup(pg_no);
+
+	if (spte == NULL) {
+		printf("[load_page] Needed page was not found in the supplemental page table\n");
+		return false;
+	}
+
+	printf("[load_page] Needed page was found in the supplemental page table\n");
+
+#ifdef VM
+	if(spte->swapped_out)
+	{
+		printf("[load_page] Page for 0x%X was swapped out\n", upage);
+		void *kpage =  frame_swap_in(spte);
+		if(NULL == kpage)
+		{
+			return false;
+		}
+		if (!install_page (spte->virt_page_addr, kpage, spte->writable))
+		{
+			frame_free(kpage);
+			return false;
+		}
+		printf("[load_page] Swapped page back in\n");
+		return true;
+	}
+	else
+	{
+#endif
+		// lazy load
+		return lazy_loading_page_for_address(spte, upage);
+#ifdef VM
+	}
+#endif
+}
+
+/* Allocate and load a new page from the executable */
+bool lazy_loading_page_for_address(	struct supl_pte *spte, void *upage)
+{
+	struct thread *crt = thread_current();
+
+    /* Get a page of memory. */
+#ifdef VM
+	uint8_t *kpage = frame_alloc (PAL_USER, spte);
+#else
+     uint8_t *kpage = palloc_get_page (PAL_USER);
+#endif
+     if (kpage == NULL)
+       return false;
+
+     // Establish the file offset the page must be read from
+     file_seek (crt->exec_file, spte->ofs);
+
+     // Added by Adrian Colesa - VM
+     printf("\n[lazy_load_segment] Virtual page %d: from offset %d in the executable file read %d bytes and zero the rest %d bytes\n", ((unsigned int) upage)/PGSIZE, file_tell(crt->exec_file), spte->page_read_bytes, spte->page_zero_bytes);
+
+     /* Load this page. */
+     if (file_read (crt->exec_file, kpage, spte->page_read_bytes) != (int) spte->page_read_bytes)
+       {
+         palloc_free_page (kpage);
+         return false;
+       }
+     memset (kpage + spte->page_read_bytes, 0, spte->page_zero_bytes);
+
+     // Added by Adrian Colesa - Userprog + VM
+     //printf("[load_segment] The process virtual page %d starting at virtual address 0x%x will be mapped onto the kernel virtual page %d (physical frame %d) starting at kernel virtual address 0x%x (physical address 0x%x)\n", ((unsigned int) upage)/PGSIZE, upage, (unsigned int)kpage/PGSIZE, ((unsigned int)vtop(kpage))/PGSIZE, kpage, vtop(kpage));
+     printf("[lazy_load_segment] Virtual page %d (vaddr=0x%x): mapped onto the kernel virtual page %d (physical frame %d)\n", ((unsigned int) upage)/PGSIZE, upage, (unsigned int)kpage/PGSIZE, ((unsigned int)vtop(kpage))/PGSIZE);
+
+     //frame_evict(kpage);
+
+     /* Add the page to the process's address space. */
+     if (!install_page (spte->virt_page_addr, kpage, spte->writable))
+       {
+#ifdef VM
+         frame_free(kpage);
+#else
+         palloc_free_page (kpage);
+#endif
+         return false;
+       }
+
+       return true;
+}
+
+#endif
