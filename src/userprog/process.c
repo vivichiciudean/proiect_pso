@@ -75,7 +75,7 @@ start_process (void *file_name_)
 //Added by Alex
 #ifdef VM
   hash_init(&thread_current()->supl_pt, page_hash, page_less, NULL);
-  printf("Suplimental page (hash) table initialized\n");
+  //printf("Suplimental page (hash) table initialized\n");
 
   thread_current()->exec_file = NULL;
 #endif
@@ -421,7 +421,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 	  //printf("[load] spte->virt_page_addr=0x%x, spte->virt_page_no=%d, spte->ofs=%d, spte->page_read_bytes=%d, spte->page_zero_bytes=%d, spte->writable=%d\n", spte->virt_page_addr, spte->virt_page_no, spte->ofs, spte->page_read_bytes, spte->page_zero_bytes, spte->writable);
   }
 
-  printf("\n\n[load] Setup the STACK segment\n");
+  //printf("\n\n[load] Setup the STACK segment\n");
 #endif
 
   /* Set up stack. */
@@ -589,8 +589,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       spte->swapped_out = false;
       hash_insert (&thread_current()->supl_pt, &spte->he);
 
-      printf("[load_segment] spte->virt_page_addr=0x%x, spte->virt_page_no=%d, spte->ofs=%d, spte->page_read_bytes=%d, spte->page_zero_bytes=%d, spte->writable=%d\n",
-    		  spte->virt_page_addr, spte->virt_page_no, spte->ofs, spte->page_read_bytes, spte->page_zero_bytes, spte->writable);
+      //printf("[load_segment] spte->virt_page_addr=0x%x, spte->virt_page_no=%d, spte->ofs=%d, spte->page_read_bytes=%d, spte->page_zero_bytes=%d, spte->writable=%d\n", spte->virt_page_addr, spte->virt_page_no, spte->ofs, spte->page_read_bytes, spte->page_zero_bytes, spte->writable);
 
       crt_ofs += page_read_bytes;
 #else
@@ -648,8 +647,7 @@ setup_stack (void **esp)
   spte->writable = true;
   spte->swapped_out = false;
   hash_insert (&thread_current()->supl_pt, &spte->he);
-  printf("[setup_stack] spte->virt_page_addr=0x%x, spte->virt_page_no=%d, spte->ofs=%d, spte->page_read_bytes=%d, spte->page_zero_bytes=%d, spte->writable=%d\n",
-      		  spte->virt_page_addr, spte->virt_page_no, spte->ofs, spte->page_read_bytes, spte->page_zero_bytes, spte->writable);
+  //printf("[setup_stack] spte->virt_page_addr=0x%x, spte->virt_page_no=%d, spte->ofs=%d, spte->page_read_bytes=%d, spte->page_zero_bytes=%d, spte->writable=%d\n", spte->virt_page_addr, spte->virt_page_no, spte->ofs, spte->page_read_bytes, spte->page_zero_bytes, spte->writable);
 
   kpage = frame_alloc (PAL_USER | PAL_ZERO, spte);
 #else
@@ -733,21 +731,21 @@ bool load_page_for_address(uint8_t *upage)
 	struct supl_pte *spte;
 	uint32_t pg_no = ((uint32_t) upage) / PGSIZE;
 
-	printf("[load_page] Looking for page no %d (address 0x%x) in the supplemental hash table\n", pg_no, upage);
+	//printf("[load_page] Looking for page no %d (address 0x%x) in the supplemental hash table\n", pg_no, upage);
 
 	spte = page_lookup(pg_no);
 
 	if (spte == NULL) {
-		printf("[load_page] Needed page was not found in the supplemental page table\n");
+		//printf("[load_page] Needed page was not found in the supplemental page table\n");
 		return false;
 	}
 
-	printf("[load_page] Needed page was found in the supplemental page table\n");
+	//printf("[load_page] Needed page was found in the supplemental page table\n");
 
 #ifdef VM
 	if(spte->swapped_out)
 	{
-		printf("[load_page] Page for 0x%X was swapped out\n", upage);
+	//	printf("[load_page] Page for 0x%X was swapped out\n", upage);
 		void *kpage =  frame_swap_in(spte);
 		if(NULL == kpage)
 		{
@@ -758,7 +756,7 @@ bool load_page_for_address(uint8_t *upage)
 			frame_free(kpage);
 			return false;
 		}
-		printf("[load_page] Swapped page back in\n");
+		//printf("[load_page] Swapped page back in\n");
 		return true;
 	}
 	else
@@ -789,7 +787,7 @@ bool lazy_loading_page_for_address(	struct supl_pte *spte, void *upage)
      file_seek (crt->exec_file, spte->ofs);
 
      // Added by Adrian Colesa - VM
-     printf("\n[lazy_load_segment] Virtual page %d: from offset %d in the executable file read %d bytes and zero the rest %d bytes\n", ((unsigned int) upage)/PGSIZE, file_tell(crt->exec_file), spte->page_read_bytes, spte->page_zero_bytes);
+     //printf("\n[lazy_load_segment] Virtual page %d: from offset %d in the executable file read %d bytes and zero the rest %d bytes\n", ((unsigned int) upage)/PGSIZE, file_tell(crt->exec_file), spte->page_read_bytes, spte->page_zero_bytes);
 
      /* Load this page. */
      if (file_read (crt->exec_file, kpage, spte->page_read_bytes) != (int) spte->page_read_bytes)
@@ -801,7 +799,7 @@ bool lazy_loading_page_for_address(	struct supl_pte *spte, void *upage)
 
      // Added by Adrian Colesa - Userprog + VM
      //printf("[load_segment] The process virtual page %d starting at virtual address 0x%x will be mapped onto the kernel virtual page %d (physical frame %d) starting at kernel virtual address 0x%x (physical address 0x%x)\n", ((unsigned int) upage)/PGSIZE, upage, (unsigned int)kpage/PGSIZE, ((unsigned int)vtop(kpage))/PGSIZE, kpage, vtop(kpage));
-     printf("[lazy_load_segment] Virtual page %d (vaddr=0x%x): mapped onto the kernel virtual page %d (physical frame %d)\n", ((unsigned int) upage)/PGSIZE, upage, (unsigned int)kpage/PGSIZE, ((unsigned int)vtop(kpage))/PGSIZE);
+     //printf("[lazy_load_segment] Virtual page %d (vaddr=0x%x): mapped onto the kernel virtual page %d (physical frame %d)\n", ((unsigned int) upage)/PGSIZE, upage, (unsigned int)kpage/PGSIZE, ((unsigned int)vtop(kpage))/PGSIZE);
 
      //frame_evict(kpage);
 

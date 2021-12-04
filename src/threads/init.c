@@ -144,7 +144,9 @@ main (void)
   ide_init ();
   locate_block_devices ();
   //added by Vivi
+#ifdef VM
   swap_init();
+#endif
   filesys_init (format_filesys);
 #endif
 
