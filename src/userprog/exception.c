@@ -156,6 +156,16 @@ page_fault (struct intr_frame *f)
           not_present ? "not present" : "rights violation",
           write ? "writing" : "reading",
           user ? "user" : "kernel");
+
+  // Added by Adrian Colesa - VM
+#ifdef VM
+  if (not_present)
+	  // Load (allocate) the page the faulty virtual address "fault_addr" belongs to
+	  if (load_page_for_address(fault_addr))
+		  return;
+#endif
+
+
   kill (f);
 }
 

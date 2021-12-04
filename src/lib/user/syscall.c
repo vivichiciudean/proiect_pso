@@ -183,40 +183,29 @@ inumber (int fd)
   return syscall1 (SYS_INUMBER, fd);
 }
 
-/*
- * Added by Adrian Colesa - multithreading
- */
-int uthread_create(THREAD_FUNC th_fc, int* fc_arg)
+
+// Added by Adrian Colesa - VM
+int get_swap_size()
 {
-	return syscall2 (SYS_UTHREAD_CREATE, th_fc, fc_arg);
+	return syscall0 (SYS_GET_SWAP_SIZE);
 }
 
-int uthread_join(int th_id, int* th_status)
+int get_swap_name(char *name)
 {
-	return syscall2 (SYS_UTHREAD_JOIN, th_id, th_status);
+	return syscall1 (SYS_GET_SWAP_NAME, name);
 }
 
-int uthread_joinall()
+int get_swap_read_cnt()
 {
-	return syscall0(SYS_UTHREAD_JOINALL);
+	return syscall0 (SYS_GET_SWAP_READ_CNT);
 }
 
-void uthread_exit(int th_exit_code)
+int get_swap_write_cnt()
 {
-	syscall1 (SYS_UTHREAD_EXIT, th_exit_code);
+	return syscall0 (SYS_GET_SWAP_WRITE_CNT);
 }
 
-int uthread_getpid()
+void swap_out(void* addr)
 {
-	return syscall0 (SYS_UTHREAD_GETPID);
-}
-
-int uthread_gettid()
-{
-	return syscall0 (SYS_UTHREAD_GETTID);
-}
-
-void uthread_msleep( uint32_t s )
-{
-	syscall1( SYS_MSLEEP, s );
+	return syscall1 (SYS_SWAP_OUT, addr);
 }

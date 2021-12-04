@@ -45,15 +45,11 @@ bool readdir (int fd, char name[READDIR_MAX_LEN + 1]);
 bool isdir (int fd);
 int inumber (int fd);
 
-// Added by Adrian Colesa - multithreading
-typedef int (*THREAD_FUNC)(int);
-int uthread_create(THREAD_FUNC, int*);
-int uthread_join(int, int*);
-int uthread_joinall(void);
-void uthread_exit(int);
-int uthread_getpid(void);
-int uthread_gettid(void);
-void uthread_msleep( uint32_t);
-
+// Added by Adrian Colesa - VM
+int get_swap_size();
+int get_swap_name(char*);
+int get_swap_read_cnt();
+int get_swap_write_cnt();
+void swap_out(void*);
 
 #endif /* lib/user/syscall.h */

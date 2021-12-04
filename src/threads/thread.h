@@ -4,7 +4,13 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
-#include "synch.h"
+
+// Added by Adrian Colesa - VM
+#ifdef VM
+#include <hash.h>
+#include "filesys/filesys.h"
+#define MAX_OPEN_FILES	10
+#endif
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -25,10 +31,25 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
-#define CHILD_ALIVE 10 
-#define CHILD_KILLED -1
-#define CHILD_EXITED 1
-#define CHILD_NOT_EXITED 2
+/* Added by Adrian Colesa */
+struct thread_statistics {
+	int tid;							// thread ID
+	int ready_begin;					// the moment the thread is inserted in ready queue
+	int ready_waiting_time;				// account for time the thread was in ready queue
+	int blocked_begin;					// the moment the thread is inserted in a waiting queue
+	int blocked_waiting_time;			// account for time the thread was in waiting queues (blocked)
+	int reaction_time;					// total reaction time
+	int no_waiting_time;				// the number of times the thread was waiting (blocked)
+	int last_reaction_time;				// measure the last reaction time
+	int max_reaction_time;				// measure the maximum reaction time
+	int running_begin;					// the moment the thread is given the processor
+	int running_time;					// account for time the thread was in running state
+	int execution_begin;				// the moment the thread starts its execution
+	int execution_time;					// total execution time measured by the wall clock
+
+	struct list_elem stats_elem;		// used to link all statistics together
+};
+
 
 /* A kernel thread or user process.
 
@@ -94,34 +115,36 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
+
+    /* Added by Adrian Colesa */
+    struct thread_statistics *stats;	// record thread's statistics
+
+
     struct list_elem allelem;           /* List element for all threads list. */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-    struct thread *parent;
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
-    struct list file_struct_list;
-    struct list child_processes;           //list of the procceses this thread has created
-    struct semaphore sema_proc_exec; 
-    struct semaphore sema_proc_wait;
 #endif
+
+    // Added by Adrian Colesa - VM
+#ifdef VM
+	struct hash supl_pt;			// Used to associate additional information with a virtual page
+									// Do not need to keep information about all possible virtual pages,
+									// like the normal page table, but only about the really used ones
+	struct file *exec_file;			// The opened executable file to be used when needed
+									// to lazily load pages from when page faults will be generated
+
+    // Added by Adrian Colesa - VM
+	struct file **open_files;
+#endif
+
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
-
-struct child_process {
-   tid_t child_pid;                      //the id of the process that created this thread
-   int cur_status;                        /*the child's current status*/
-   bool is_awaited;                       /*check if proccess is already awaited by the parent*/
-   bool is_loaded;                        /*true after succesfull load (changed in exec) */
-   int exit_status;                       /*the status the child thread exit with*/\
-
-   struct thread * child_proc_thread;     //points to the actual thread whose info is stored in this struct  
-   struct list_elem proc_list_elem;           /*list elem used to add in child_list */
-};
-
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -158,5 +181,14 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+/* Adrian Colesa */
+char* thread_status(enum thread_status status);
+int thread_get_execution_time(int tid);
+int thread_get_running_time(int tid);
+int thread_get_ready_time(int tid);
+int thread_get_blocked_time(int tid);
+int thread_get_avg_reaction_time(int tid);
+int thread_get_max_reaction_time(int tid);
 
 #endif /* threads/thread.h */
