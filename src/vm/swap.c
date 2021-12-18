@@ -27,7 +27,7 @@ void swap_init(void)
     {
     	PANIC("Unable to initialize swap table!");
     }
-
+	
     // mark all the indexes in the swap table to free
     bitmap_set_all(swap_table, SWAP_FREE);
 }
@@ -51,6 +51,13 @@ void swap_in(size_t bitmap_idx, void *frame_addr)
 	ASSERT(bitmap_test(swap_table, bitmap_idx) == SWAP_USED);
 
     // swap in all the sectors for the current frame;
+	printf("Let`s swap IN!\n");
+	// swap out the frame to the swap space
+
+	bitmap_set(swap_table, bitmap_idx, SWAP_FREE);
+	for (i = 0; i < SWAP_SECTORS_PER_PAGE; i++) {
+		block_read (swap_block, (bitmap_idx * SWAP_SECTORS_PER_PAGE) + i , frame_addr + (i * SWAP_SECTORS_PER_PAGE));
+	}
 }
 
 /*
@@ -65,8 +72,20 @@ size_t swap_out(void *frame_addr)
 	ASSERT(NULL != swap_block);
 
 	// find a free index in the swap table
-
+	//KERNEL PANIC daca swap partition e plin
 	// swap out the frame to the swap space
+
+
+
+	// find a free index in the swap table
+	free_idx = bitmap_scan_and_flip (swap_table, 0, 1, SWAP_FREE);
+
+	printf("Let`s swap!\n");
+	// swap out the frame to the swap space
+
+	for (i = 0; i < SWAP_SECTORS_PER_PAGE; i++) {
+		block_write (swap_block, (free_idx * SWAP_SECTORS_PER_PAGE) + i , frame_addr + (i * SWAP_SECTORS_PER_PAGE));
+	}
 	return free_idx;
 }
 

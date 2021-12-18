@@ -82,11 +82,25 @@ void frame_evict( void *kernel_va)
 	ASSERT(NULL != frame_table);
 	ASSERT(NULL != free_frames_bitmap);
 
+
+		//cautam la ce index de pagina fizica se afla adresa virtuala
+
 	// HINT: Compute the frame_index for the kernel_va, see frame_free
 	// HINT: struct supl_pte * spte = frame_table[frame_idx].spte;
 
-	// swap the frame out, mark the spte as swapped out.
+	// swap the frame out, mark the spte as swapped out. (trebuie luat de aici si dus in swap partition)
 	// mark the entry as free
+
+	// HINT: Compute the frame_index for the kernel_va, see frame_free
+	size_t idx = ((size_t) kernel_va - (size_t)user_frames)/PGSIZE;
+	// HINT: struct supl_pte * spte = frame_table[frame_idx].spte;
+ 	struct supl_pte * spte = frame_table[idx].spte;
+	// swap the frame out, mark the spte as swapped out.
+	spte->swap_idx = swap_out(kernel_va);
+	spte->swapped_out = true;
+
+	// mark the entry as free
+	bitmap_set(free_frames_bitmap, idx, FRAME_FREE);
 }
 
 void * frame_swap_in(struct supl_pte* spte)
@@ -95,9 +109,11 @@ void * frame_swap_in(struct supl_pte* spte)
 	ASSERT(NULL != free_frames_bitmap);
 
 	// find the first free frame and mark it as used
-	size_t free_idx = 0;
+	size_t free_idx = bitmap_scan_and_flip(free_frames_bitmap, 0, 1, FRAME_FREE);
 
 	// swap in
+	swap_in(spte->swap_idx, user_frames + PGSIZE * free_idx);
+
 	return (char *)user_frames + PGSIZE * free_idx;
 }
 
