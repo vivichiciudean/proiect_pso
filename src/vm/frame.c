@@ -61,10 +61,14 @@ void *frame_alloc( enum palloc_flags flags,  struct supl_pte* spte)
 	{
 		PANIC("[frame_table] Table is full.");
 		// TODO: evict a page and install a new one
+		//for every page in page table, see the LRU time and get min
+		//for(int i=0;i<)
 	}
-	//printf("[frame_table] Allocated frame with index = %d\n", free_idx);
 
 	frame_table[free_idx].spte = spte;
+	spte->timer_ticks = timer_ticks();
+	printf("[frame_table] Allocated frame with index = %d and with LRU time: %d\n", free_idx, spte->timer_ticks);
+
     frame_table[free_idx].ownner_thread = thread_current();
 
     if(0 != (PAL_ZERO & flags))
@@ -82,25 +86,16 @@ void frame_evict( void *kernel_va)
 	ASSERT(NULL != frame_table);
 	ASSERT(NULL != free_frames_bitmap);
 
+	// Compute the frame_index for the kernel_va, see frame_free
+	size_t frame_index = ((size_t) kernel_va - (size_t)user_frames)/PGSIZE;
+ 	struct supl_pte * spte = frame_table[frame_index].spte;
 
-		//cautam la ce index de pagina fizica se afla adresa virtuala
-
-	// HINT: Compute the frame_index for the kernel_va, see frame_free
-	// HINT: struct supl_pte * spte = frame_table[frame_idx].spte;
-
-	// swap the frame out, mark the spte as swapped out. (trebuie luat de aici si dus in swap partition)
-	// mark the entry as free
-
-	// HINT: Compute the frame_index for the kernel_va, see frame_free
-	size_t idx = ((size_t) kernel_va - (size_t)user_frames)/PGSIZE;
-	// HINT: struct supl_pte * spte = frame_table[frame_idx].spte;
- 	struct supl_pte * spte = frame_table[idx].spte;
 	// swap the frame out, mark the spte as swapped out.
 	spte->swap_idx = swap_out(kernel_va);
 	spte->swapped_out = true;
 
 	// mark the entry as free
-	bitmap_set(free_frames_bitmap, idx, FRAME_FREE);
+	bitmap_set(free_frames_bitmap, frame_index, FRAME_FREE);
 }
 
 void * frame_swap_in(struct supl_pte* spte)
@@ -125,6 +120,6 @@ void frame_free(void *frame_addr)
 
 	size_t idx = ((size_t) frame_addr - (size_t)user_frames)/PGSIZE;
 
-	//printf("[frame_table] Free frame with index = %d\n", idx);
+	printf("[frame_table] Free frame with index = %d\n", idx);
 	bitmap_set(free_frames_bitmap, idx, FRAME_FREE);
 }
