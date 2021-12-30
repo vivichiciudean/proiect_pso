@@ -17,7 +17,7 @@ struct supl_pte {		// an entry (element) in the supplemental page table
 	struct hash_elem he;				// element to insert the structure in a hash list
 	bool        swapped_out;            // corresponds to a swapped out page
     size_t      swap_idx;               // index for swap in
-    int64_t      timer_ticks;               // time for LRU algorithm
+    int64_t     timer_ticks;            // time for LRU algorithm
 	//Cristi
 	int map_id;
 	void*	frame_addr;	

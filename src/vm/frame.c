@@ -57,12 +57,33 @@ void *frame_alloc( enum palloc_flags flags,  struct supl_pte* spte)
 	size_t free_idx = 0;
 
 	free_idx = bitmap_scan_and_flip(free_frames_bitmap, 0, 1, FRAME_FREE);
+	//printf("%d ", free_idx);
+
 	if(BITMAP_ERROR == free_idx)
 	{
-		PANIC("[frame_table] Table is full.");
-		// TODO: evict a page and install a new one
-		//for every page in page table, see the LRU time and get min
-		//for(int i=0;i<)
+		int evict_idx = -1;
+		int64_t min_ticks = INT64_MAX;
+		for(int i = 0; i < bitmap_size(free_frames_bitmap); i++){
+			if (frame_table[i].spte != NULL && frame_table[i].spte->swapped_out == false){
+				//printf("%d ", frame_table[i].spte->timer_ticks);
+				if(min_ticks > frame_table[i].spte->timer_ticks){
+					evict_idx = i;
+					min_ticks = frame_table[i].spte->timer_ticks;
+				}
+			}
+		}
+		//printf(" %d %d \n", evict_idx,min_ticks);
+		if(evict_idx != -1) {
+			if(frame_table[evict_idx].spte != NULL) {
+				//printf("%d ", frame_table[evict_idx].spte->virt_page_addr);
+				frame_evict(evict_idx);
+				free_idx = evict_idx;
+			}
+		} else{
+			//PANIC("[frame_table] Evict a frame WRONG");
+			return -1;
+		}
+
 	}
 
 	frame_table[free_idx].spte = spte;
@@ -81,7 +102,7 @@ void *frame_alloc( enum palloc_flags flags,  struct supl_pte* spte)
     return (char *)user_frames + PGSIZE * free_idx;
 }
 
-void frame_evict( void *kernel_va)
+void frame_evict(void *kernel_va)
 {
 	ASSERT(NULL != frame_table);
 	ASSERT(NULL != free_frames_bitmap);
@@ -93,6 +114,12 @@ void frame_evict( void *kernel_va)
 	// swap the frame out, mark the spte as swapped out.
 	spte->swap_idx = swap_out(kernel_va);
 	spte->swapped_out = true;
+
+	//alternativ, se puteau folosi bitii de accessed sau dirty:
+	/*if (pagedir_is_accessed(....))
+	{
+		pagedir_set_accessed(...., false);
+	}*/
 
 	// mark the entry as free
 	bitmap_set(free_frames_bitmap, frame_index, FRAME_FREE);
@@ -108,6 +135,8 @@ void * frame_swap_in(struct supl_pte* spte)
 
 	// swap in
 	swap_in(spte->swap_idx, user_frames + PGSIZE * free_idx);
+	spte->swapped_out = false;
+	spte->timer_ticks = timer_ticks(); //actualizam timer-ul de LRU cand lucram iar cu acel frame
 
 	return (char *)user_frames + PGSIZE * free_idx;
 }
