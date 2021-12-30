@@ -6,6 +6,7 @@
 #include "threads/malloc.h"
 #include "process.h"
 
+
 static void syscall_handler (struct intr_frame *);
 
 struct child_process* get_child(tid_t tid, struct list *child_process_list);
@@ -308,6 +309,9 @@ syscall_handler (struct intr_frame *f)
   is_valid_addr(&((int *)f->esp)[1]);
   int syscall = ((int*)f->esp)[0];
 
+  void* mapping_addr;
+  int mapping_id;
+
   char *exec_buffer;
   int exit_status;
   tid_t child_tid;
@@ -370,10 +374,194 @@ syscall_handler (struct intr_frame *f)
 		case SYS_FILESIZE: 
       f->eax = k_filesize(((int*)f->esp)[1]);
       break;
+    // Cristi
+    case SYS_MMAP:
+			fd = ((int*)f->esp)[1];
+			mapping_addr = (void*) ((int*)f->esp)[2];
+
+			// Lazy mapping of the file. Similar to lazy loading the contents of an executable file.
+			// Calculate the total number of virtual pages needed to map the entire file.
+			// Take care that the last page could not be entirely used, so the trailing bytes should be zeroed and not written back in the file.
+			// Keep track for each mapped virtual page the offset in file it must be loaded from.
+			// Use supplemental page table to store this information.
+			// TO DO
+
+      mapping_id = sys_mmap (fd, mapping_addr);
+			f->eax = mapping_id;
+			return;
+		case SYS_MUNMAP:
+
+			// Remove from the supplemental page table the elements corresponding to the unmapped pages.
+			// TO DO
+      mapping_id = ((int*)f->esp)[1];
+
+      sys_munmap(mapping_id);
+
+			f->eax = 0;
+			return;
+    // Cristi
 		default: 
       thread_exit ();
       break;
 	}
+}
+
+int sys_mmap (int fd,void *mapping_addr)
+{
+  if (mapping_addr == NULL || pg_ofs(mapping_addr) != 0) return -1;
+  if (fd <= 1) return -1;
+
+  struct thread *curr = thread_current();
+
+  struct file *f = NULL;
+
+  lock_acquire(&file_lock);
+  struct file_struct *file_struct = get_file_struct_for_fd(fd);
+  lock_release(&file_lock);
+
+  if(file_struct == NULL) exit(-1);
+ 
+  if(file_struct && file_struct->file) {
+    // reopen file so that it doesn't interfere with process itself
+    f = file_reopen (file_struct->file);
+  } else {
+    return -1;
+  }
+
+  if(f == NULL) return -1;
+
+  size_t file_size = file_length(f);
+  
+  if(file_size == 0) 
+  {
+    exit(-1);
+    return -1;
+  }
+
+  size_t offset;
+  for (offset = 0; offset < file_size; offset += PGSIZE) {
+    void *addr = mapping_addr + offset;
+    if (spte_lookup(addr) != NULL)
+    {
+      return -1;
+    }
+  }
+
+  int map_id;
+  if (! list_empty(&curr->mmap_list)) {
+    map_id = list_entry(list_back(&curr->mmap_list), struct mmap_struct, elem)->id + 1;
+  }
+  else map_id = 1;
+
+  for (offset = 0; offset < file_size; offset += PGSIZE) {
+    void *addr = mapping_addr + offset;
+
+    size_t read_bytes = (offset + PGSIZE < file_size ? PGSIZE : file_size - offset);
+    size_t zero_bytes = PGSIZE - read_bytes;
+
+    struct supl_pte *spte;
+    spte = malloc(sizeof(struct supl_pte));
+    spte->virt_page_addr = addr;
+    spte->virt_page_no = ((unsigned int) addr)/PGSIZE;
+    spte->ofs = offset;
+    spte->page_read_bytes = read_bytes;
+    spte->page_zero_bytes = zero_bytes;
+    spte->writable = true;
+    spte->swapped_out = false;
+    //Cristi
+    spte->map_id = map_id;
+    spte->frame_addr = NULL;
+    spte->dirty = false;
+    //Cristi
+    struct hash_elem *elem = hash_insert (&thread_current()->supl_pt, &spte->he);
+
+    if (elem != NULL) {
+      return -1;
+      PANIC("Duplicated");
+    }   
+  }
+
+  struct mmap_struct *mmap_str = (struct mmap_struct*) malloc(sizeof(struct mmap_struct));
+  mmap_str->id = map_id;
+  mmap_str->file = f;
+  mmap_str->addr = mapping_addr;
+  mmap_str->size = file_size;
+  list_push_back (&curr->mmap_list, &mmap_str->elem);
+
+  return map_id;
+
+}
+
+struct mmap_struct *
+mmap_list_lookup(struct thread *t, int map_id)
+{
+  ASSERT (t != NULL);
+
+  struct list_elem *e;
+
+  if (! list_empty(&t->mmap_list)) {
+    for(e = list_begin(&t->mmap_list);
+        e != list_end(&t->mmap_list); e = list_next(e))
+    {
+      struct mmap_struct *elem = list_entry(e, struct mmap_struct, elem);
+      if(elem->id == map_id) {
+        return elem;
+      }
+    }
+  }
+
+  return NULL;
+}
+
+void sys_munmap(int map_id)
+{
+  struct thread *curr = thread_current();
+  struct mmap_struct *mmap_str = mmap_list_lookup(thread_current(), map_id);
+
+  if(mmap_str == NULL) { 
+    exit(-1);
+  }
+
+  size_t offset, file_size = mmap_str->size;
+  for(offset = 0; offset < file_size; offset += PGSIZE) {
+    void *addr = mmap_str->addr + offset;
+    size_t no_bytes = (offset + PGSIZE < file_size ? PGSIZE : file_size - offset);
+    struct supl_pte * spte = spte_lookup (addr);
+    if(spte != NULL) {
+      if(spte->swapped_out)
+      {
+        bool is_dirty =  pagedir_is_dirty(curr->pagedir, spte->virt_page_addr);
+        if (is_dirty) {
+          void *aux_page = palloc_get_page(0);
+          swap_in(spte->swap_idx, aux_page);
+          file_write_at (mmap_str->file, aux_page, no_bytes, offset);
+        }
+      } else {
+        bool is_dirty = false;
+        is_dirty = is_dirty || pagedir_is_dirty(curr->pagedir, spte->virt_page_addr);
+        
+        if(is_dirty ) {
+          file_write_at (mmap_str->file, spte->virt_page_addr, no_bytes, offset);   
+        } else {
+          // free swap
+          bitmap_set(swap_table, spte->swap_idx, SWAP_FREE);
+        }
+
+        if(spte->frame_addr != NULL)
+        {
+          frame_free(spte->frame_addr);
+        }
+        pagedir_clear_page (curr->pagedir, spte->virt_page_addr);
+      }
+
+    hash_delete(&thread_current()->supl_pt, &spte->he);
+    }
+  }
+
+
+  list_remove(& mmap_str->elem);
+  file_close(mmap_str->file);
+  free(mmap_str);
 }
 
 struct child_process *get_child(tid_t pid, struct list *child_process_list){

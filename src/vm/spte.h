@@ -18,6 +18,11 @@ struct supl_pte {		// an entry (element) in the supplemental page table
 	bool        swapped_out;            // corresponds to a swapped out page
     size_t      swap_idx;               // index for swap in
     int64_t      timer_ticks;               // time for LRU algorithm
+	//Cristi
+	int map_id;
+	void*	frame_addr;	
+	bool dirty;
+	//Cristi
 };
 
 #endif

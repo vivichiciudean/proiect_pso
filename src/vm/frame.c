@@ -67,7 +67,7 @@ void *frame_alloc( enum palloc_flags flags,  struct supl_pte* spte)
 
 	frame_table[free_idx].spte = spte;
 	spte->timer_ticks = timer_ticks();
-	printf("[frame_table] Allocated frame with index = %d and with LRU time: %d\n", free_idx, spte->timer_ticks);
+	//printf("[frame_table] Allocated frame with index = %d and with LRU time: %d\n", free_idx, spte->timer_ticks);
 
     frame_table[free_idx].ownner_thread = thread_current();
 
@@ -120,6 +120,6 @@ void frame_free(void *frame_addr)
 
 	size_t idx = ((size_t) frame_addr - (size_t)user_frames)/PGSIZE;
 
-	printf("[frame_table] Free frame with index = %d\n", idx);
+	//printf("[frame_table] Free frame with index = %d\n", idx);
 	bitmap_set(free_frames_bitmap, idx, FRAME_FREE);
 }

@@ -7,6 +7,18 @@
 #include "vm/spte.h"
 #endif
 
+//Cristi
+#ifdef VM
+struct mmap_struct{
+  int id;
+  struct list_elem elem;
+  struct file* file;
+  void *addr;   // user virtual address
+  size_t size;  // file size
+};
+#endif
+//Cristi
+
 tid_t process_execute (const char *file_name);
 int process_wait (tid_t);
 void process_exit (void);

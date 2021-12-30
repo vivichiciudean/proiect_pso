@@ -18,8 +18,8 @@ void swap_init(void)
     // get the number of sectors in the swap block
     swap_number_of_sectors = block_size(swap_block);
 
-    printf("[swap_table] Initializing for %d sectors\n", swap_number_of_sectors);
-    printf("[swap_table] Number of entries in the bitmap: %d\n",  swap_number_of_sectors / SWAP_SECTORS_PER_PAGE);
+    //printf("[swap_table] Initializing for %d sectors\n", swap_number_of_sectors);
+    //printf("[swap_table] Number of entries in the bitmap: %d\n",  swap_number_of_sectors / SWAP_SECTORS_PER_PAGE);
 
     // initialize a bitmap to represent the free "slots" in the swap space
     swap_table = bitmap_create( swap_number_of_sectors / SWAP_SECTORS_PER_PAGE);

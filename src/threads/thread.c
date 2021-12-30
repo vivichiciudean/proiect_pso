@@ -15,6 +15,7 @@
 #include "userprog/process.h"
 #endif
 
+
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
    of thread.h for details. */
@@ -92,6 +93,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -489,6 +491,14 @@ init_thread (struct thread *t, const char *name, int priority)
   sema_init(&t->sema_proc_exec, 0);
   sema_init(&t->sema_proc_wait, 0);
 #endif
+
+#ifdef VM
+  // Cristi
+list_init(&t->mmap_list);
+// Cristi
+#endif
+
+
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;

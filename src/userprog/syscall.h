@@ -8,6 +8,15 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 
+//Cristi
+#ifdef VM
+#include "vm/spte.h"
+#include "vm/frame.h"
+#include "vm/swap.h"
+#endif
+//Cristi
+
+
 
 #define MIN_FILENAME_LENGTH 1
 #define MAX_FILENAME_LENGTH 14

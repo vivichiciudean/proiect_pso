@@ -116,6 +116,8 @@ struct thread
     struct semaphore sema_proc_wait;
 #endif
 
+
+
 //Added by Alex
 #ifdef VM
 	struct hash supl_pt;			// Used to associate additional information with a virtual page
@@ -125,6 +127,10 @@ struct thread
 									// to lazily load pages from when page faults will be generated
 
 	struct file **open_files;
+
+    // Cristi
+    struct list mmap_list; // List of struct mmap_struct
+   // Cristi
 #endif
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

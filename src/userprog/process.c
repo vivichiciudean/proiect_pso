@@ -170,6 +170,19 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
+  #ifdef VM
+  //Cristi
+  struct list *maped_list = &cur->mmap_list;
+  while (!list_empty(maped_list)) {
+    struct list_elem *e = list_begin (maped_list);
+    struct mmap_struct *mmap_struct_elem = list_entry(e, struct mmap_struct, elem);
+
+    sys_munmap (mmap_struct_elem->id);
+  }
+  //Cristi
+  #endif
+
+
   //Alex
   // if this thread has a parent
   if(thread_current()->parent != NULL)
@@ -587,6 +600,11 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       spte->page_zero_bytes = page_zero_bytes;
       spte->writable = writable;
       spte->swapped_out = false;
+      //Cristi
+      spte->map_id = 0;
+      spte->frame_addr = NULL;
+      spte->dirty = false;
+      //Cristi
       hash_insert (&thread_current()->supl_pt, &spte->he);
 
       //printf("[load_segment] spte->virt_page_addr=0x%x, spte->virt_page_no=%d, spte->ofs=%d, spte->page_read_bytes=%d, spte->page_zero_bytes=%d, spte->writable=%d\n", spte->virt_page_addr, spte->virt_page_no, spte->ofs, spte->page_read_bytes, spte->page_zero_bytes, spte->writable);
@@ -646,6 +664,11 @@ setup_stack (void **esp)
   spte->page_zero_bytes = 0;
   spte->writable = true;
   spte->swapped_out = false;
+  //Cristi
+  spte->map_id = 0;
+  spte->frame_addr = NULL;
+  spte->dirty = false;
+  //Cristi
   hash_insert (&thread_current()->supl_pt, &spte->he);
   //printf("[setup_stack] spte->virt_page_addr=0x%x, spte->virt_page_no=%d, spte->ofs=%d, spte->page_read_bytes=%d, spte->page_zero_bytes=%d, spte->writable=%d\n", spte->virt_page_addr, spte->virt_page_no, spte->ofs, spte->page_read_bytes, spte->page_zero_bytes, spte->writable);
 
@@ -709,6 +732,22 @@ void *aux UNUSED)
 	return a->virt_page_no < b->virt_page_no;
 }
 
+//Cristi
+struct supl_pte *
+spte_lookup (void *addr)
+{
+	struct supl_pte *spte;
+	struct hash_elem *e;
+
+  uint32_t pg_no = ((unsigned int) addr)/PGSIZE;
+
+	spte = page_lookup(pg_no);
+
+  return spte ;
+}
+//Cristi
+
+
 
 /*
  * Returns the supplemental page table entry, containing the given virtual address,
@@ -756,6 +795,10 @@ bool load_page_for_address(uint8_t *upage)
 			frame_free(kpage);
 			return false;
 		}
+    //Cristi
+    spte->frame_addr = kpage;
+    //Cristi
+    
 		//printf("[load_page] Swapped page back in\n");
 		return true;
 	}
@@ -783,14 +826,24 @@ bool lazy_loading_page_for_address(	struct supl_pte *spte, void *upage)
      if (kpage == NULL)
        return false;
 
+    struct file *f = crt->exec_file;
+
+    if(spte->map_id)
+    {
+      struct mmap_struct *mmap_str = mmap_list_lookup(thread_current(), spte->map_id);
+      //printf("ZZ%dZZ",mmap_str->size);
+       f = mmap_str->file;
+    }
+
      // Establish the file offset the page must be read from
-     file_seek (crt->exec_file, spte->ofs);
+     file_seek (f, spte->ofs);
 
      // Added by Adrian Colesa - VM
-     //printf("\n[lazy_load_segment] Virtual page %d: from offset %d in the executable file read %d bytes and zero the rest %d bytes\n", ((unsigned int) upage)/PGSIZE, file_tell(crt->exec_file), spte->page_read_bytes, spte->page_zero_bytes);
+     //printf("\n[lazy_load_segment] Virtual page %d: from offset %d in the executable file read %d bytes and zero the rest %d bytes   zz %d\n", ((unsigned int) upage)/PGSIZE, file_tell(crt->exec_file), spte->page_read_bytes, spte->page_zero_bytes, spte->map_id);
+    
 
      /* Load this page. */
-     if (file_read (crt->exec_file, kpage, spte->page_read_bytes) != (int) spte->page_read_bytes)
+     if (file_read (f, kpage, spte->page_read_bytes) != (int) spte->page_read_bytes)
        {
          palloc_free_page (kpage);
          return false;
@@ -813,6 +866,9 @@ bool lazy_loading_page_for_address(	struct supl_pte *spte, void *upage)
 #endif
          return false;
        }
+        //Cristi
+        spte->frame_addr = kpage;
+        //Cristi
 
        return true;
 }

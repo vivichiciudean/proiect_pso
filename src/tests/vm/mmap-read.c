@@ -17,6 +17,7 @@ test_main (void)
   CHECK ((handle = open ("sample.txt")) > 1, "open \"sample.txt\"");
   CHECK ((map = mmap (handle, actual)) != MAP_FAILED, "mmap \"sample.txt\"");
 
+
   /* Check that data is correct. */
   if (memcmp (actual, sample, strlen (sample)))
     fail ("read of mmap'd file reported bad data");
@@ -26,6 +27,7 @@ test_main (void)
     if (actual[i] != 0)
       fail ("byte %zu of mmap'd region has value %02hhx (should be 0)",
             i, actual[i]);
+
 
   munmap (map);
   close (handle);

@@ -192,7 +192,7 @@ page_from_pool (const struct pool *pool, void *page)
 void
 kernel_pool_bitmap_dump()
 {
-	printf("\nThe bitmap of \"kernel pool\" is: \n");
+	//printf("\nThe bitmap of \"kernel pool\" is: \n");
 	bitmap_dump(kernel_pool.used_map);
 }
 
@@ -203,6 +203,6 @@ kernel_pool_bitmap_dump()
 void
 user_pool_bitmap_dump()
 {
-	printf("\nThe bitmap of \"user pool\" is: \n");
+	//printf("\nThe bitmap of \"user pool\" is: \n");
 	bitmap_dump(user_pool.used_map);
 }
