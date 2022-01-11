@@ -25,6 +25,9 @@
         "string_view": "c",
         "main.h": "c",
         "pagedir.h": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "off_t.h": "c",
+        "buffer-cache.h": "c",
+        "inode.h": "c"
     }
 }

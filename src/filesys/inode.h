@@ -7,6 +7,9 @@
 
 struct bitmap;
 
+#define INDIRECT_BLOCK_ENTRIES 128
+#define DIRECT_BLOCK_ENTRIES 123
+
 void inode_init (void);
 bool inode_create (block_sector_t, off_t);
 struct inode *inode_open (block_sector_t);
