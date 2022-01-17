@@ -118,7 +118,7 @@ bool k_create (const char *file_name, unsigned initial_size){
   lock_acquire(&file_lock);
 
   status = filesys_create(file_name, initial_size, false);
-
+  //printf("Vine din file create: %s \n",file_name);
   //printf("ok %d", status);
 
   lock_release(&file_lock);
@@ -148,7 +148,9 @@ int k_open (const char *file_name){
   lock_acquire(&file_lock);
 
   struct file *file = filesys_open(file_name);
+  //printf("filesys open aici\n");
   if (file == NULL){
+    //printf("filesys file null aici\n");
     lock_release(&file_lock);
     return -1;
   }

@@ -102,6 +102,7 @@ lookup (const struct dir *dir, const char *name,
        ofs += sizeof e) 
     if (e.in_use && !strcmp (name, e.name)) 
       {
+        //printf("Din lookup: %s %s\n", name, e.name);
         if (ep != NULL)
           *ep = e;
         if (ofsp != NULL)
@@ -186,6 +187,8 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
   strlcpy (e.name, name, sizeof e.name);
   e.inode_sector = inode_sector;
   success = inode_write_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
+
+  //printf("am trecut de dir add: %s", e.name);
 
   inode_lock_release(dir_get_inode(dir));
   return success;

@@ -130,12 +130,15 @@ filesys_create (const char *name, off_t initial_size, bool is_dir)
   block_sector_t inode_sector = 0;
   struct dir *dir = dir_from_path(name);
   char* file_name = file_name_from_path(name);
+
+  //printf("Din dir add: %s %s\n", file_name, name);
+  
   bool success = false;
   if (strcmp(file_name, ".") != 0 && strcmp(file_name, "..") != 0) {
     success = (dir != NULL
                   && free_map_allocate (1, &inode_sector)
                   && inode_create (inode_sector, initial_size, is_dir)
-                  && dir_add (dir, name, inode_sector));
+                  && dir_add (dir, file_name, inode_sector));
   }
 
   if (!success && inode_sector != 0) 
@@ -174,7 +177,7 @@ filesys_open (const char *name)
   	  }
   	}
     else
-  	  dir_lookup (dir, file_name, &inode);
+  	  dir_lookup (dir, name, &inode);
   }
   dir_close (dir);
   free(file_name);
