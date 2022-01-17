@@ -5,6 +5,7 @@
 // #include "threads/thread.h"
 #include "threads/malloc.h"
 #include "process.h"
+#include "devices/block.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -116,7 +117,7 @@ bool k_create (const char *file_name, unsigned initial_size){
 
   lock_acquire(&file_lock);
 
-  status = filesys_create(file_name, initial_size);
+  status = filesys_create(file_name, initial_size, false);
 
   //printf("ok %d", status);
 
@@ -298,6 +299,69 @@ void create_args(struct intr_frame *f, int *fd, char** buffer, int *size){
   is_valid_addr(((void*) ((int*)f->esp)[2]) + (unsigned) ((int*)f->esp)[3]);
 }
 
+
+
+
+bool k_chdir(char *path, struct intr_frame *f){
+  return filesys_chdir(path);
+}
+
+bool k_mkdir(char *path, struct intr_frame *f){
+  return  filesys_create(path, 0, true);
+}
+
+bool k_readdir(int fd, char *path, struct intr_frame *f){
+  struct file_struct *file_struct = get_file_struct_for_fd(fd);
+  if(file_struct == NULL || file_struct->file == NULL) {
+    return false;
+  }
+  struct file *file = file_struct->file;
+  struct inode* inode = file_get_inode(file);
+  if(inode == NULL) 
+    return false;
+  if(!inode_is_dir(inode)) 
+    return false;
+
+  struct dir* dir = (struct dir*) file;
+  return dir_readdir(dir, path);
+}
+bool k_isdir(int fd, struct intr_frame *f){
+
+  struct file_struct *file_struct = get_file_struct_for_fd(fd);
+  if(file_struct == NULL || file_struct->file == NULL) {
+    return false;
+  }
+  struct file *file = file_struct->file;
+  struct inode* inode = file_get_inode(file);
+  if(inode == NULL){
+    return false;
+  }
+
+  if(!inode_is_dir(inode)) {
+    return false;
+  }
+
+  return true;
+}
+
+int k_inumber(int fd, struct intr_frame *f){
+
+  struct file_struct *file_struct = get_file_struct_for_fd(fd);
+  if(file_struct == NULL || file_struct->file == NULL) {
+    return -1;
+  }
+  struct file *file = file_struct->file;
+  struct inode* inode = file_get_inode(file);
+  if(inode == NULL) {
+    return -1;
+  }
+
+  block_sector_t inumber = inode_get_inumber(inode);
+  return inumber;
+}
+
+
+
 static void
 syscall_handler (struct intr_frame *f) 
 {
@@ -317,6 +381,29 @@ syscall_handler (struct intr_frame *f)
   int position;
   int exec_pid;
 	switch(syscall){
+
+    case SYS_CHDIR:
+      //checks needed
+      f->eax = k_chdir((char*)*((int *)f->esp + 1), f);
+      break;
+    case SYS_MKDIR:
+      //checks needed
+      f->eax = k_mkdir((char*)*((int *)f->esp + 1), f);
+      break;
+    case SYS_READDIR:
+      //checks needed
+      f->eax = k_readdir(*((int *)f->esp + 1), (char*)*((int *)f->esp + 2), f);
+      break;
+    case SYS_ISDIR:
+      //checks needed
+      f->eax = k_isdir(*((int *)f->esp + 1), f);
+      break;
+    case SYS_INUMBER:
+      //checks needed
+      f->eax = k_inumber(*((int *)f->esp + 1), f);
+      break;
+
+
 		case SYS_EXEC: 
       exec_buffer = (char*)((int*)f->esp)[1];
       is_valid_addr((const void*) ((int*)f->esp)[1]);

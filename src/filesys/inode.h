@@ -7,11 +7,17 @@
 
 struct bitmap;
 
+#define DIRECT_BLOCKS 13
+#define INDIRECT_BLOCKS 1
+#define DOUBLE_INDIRECT_BLOCKS 1
+
+#define NO_OF_BLOCKS (DIRECT_BLOCKS + INDIRECT_BLOCKS + DOUBLE_INDIRECT_BLOCKS)
+
 #define INDIRECT_BLOCK_ENTRIES 128
-#define DIRECT_BLOCK_ENTRIES 123
+#define DOUBLE_INDIRECT_BLOCK_ENTRIES 16384
 
 void inode_init (void);
-bool inode_create (block_sector_t, off_t);
+bool inode_create (block_sector_t, off_t, bool);
 struct inode *inode_open (block_sector_t);
 struct inode *inode_reopen (struct inode *);
 block_sector_t inode_get_inumber (const struct inode *);

@@ -28,6 +28,11 @@
         "typeinfo": "c",
         "off_t.h": "c",
         "buffer-cache.h": "c",
-        "inode.h": "c"
+        "inode.h": "c",
+        "hash_map": "c",
+        "hash_set": "c",
+        "algorithm": "c",
+        "malloc.h": "c",
+        "syscall.h": "c"
     }
 }

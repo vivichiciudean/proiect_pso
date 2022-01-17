@@ -109,6 +109,8 @@ struct thread
 #endif
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+  
+    struct dir *current_dir;        
   };
 
 struct child_process {

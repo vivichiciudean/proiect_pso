@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "filesys/filesys.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -194,7 +195,11 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
-
+  if(thread_current()->current_dir != NULL){
+    t->current_dir = dir_reopen(thread_current()->current_dir);
+  }else{
+    t->current_dir = NULL;
+  }
 #ifdef USERPROG
   list_init(&t->file_struct_list);
   t->parent = thread_current();
