@@ -304,15 +304,15 @@ void create_args(struct intr_frame *f, int *fd, char** buffer, int *size){
 
 
 
-bool k_chdir(char *path, struct intr_frame *f){
+bool k_chdir(char *path){
   return filesys_chdir(path);
 }
 
-bool k_mkdir(char *path, struct intr_frame *f){
+bool k_mkdir(char *path){
   return  filesys_create(path, 0, true);
 }
 
-bool k_readdir(int fd, char *path, struct intr_frame *f){
+bool k_readdir(int fd, char *path){
   struct file_struct *file_struct = get_file_struct_for_fd(fd);
   if(file_struct == NULL || file_struct->file == NULL) {
     return false;
@@ -327,7 +327,7 @@ bool k_readdir(int fd, char *path, struct intr_frame *f){
   struct dir* dir = (struct dir*) file;
   return dir_readdir(dir, path);
 }
-bool k_isdir(int fd, struct intr_frame *f){
+bool k_isdir(int fd){
 
   struct file_struct *file_struct = get_file_struct_for_fd(fd);
   if(file_struct == NULL || file_struct->file == NULL) {
@@ -346,7 +346,7 @@ bool k_isdir(int fd, struct intr_frame *f){
   return true;
 }
 
-int k_inumber(int fd, struct intr_frame *f){
+int k_inumber(int fd){
 
   struct file_struct *file_struct = get_file_struct_for_fd(fd);
   if(file_struct == NULL || file_struct->file == NULL) {
@@ -386,23 +386,23 @@ syscall_handler (struct intr_frame *f)
 
     case SYS_CHDIR:
       //checks needed
-      f->eax = k_chdir((char*)*((int *)f->esp + 1), f);
+      f->eax = k_chdir((char*)*((int *)f->esp + 1));
       break;
     case SYS_MKDIR:
       //checks needed
-      f->eax = k_mkdir((char*)*((int *)f->esp + 1), f);
+      f->eax = k_mkdir((char*)*((int *)f->esp + 1));
       break;
     case SYS_READDIR:
       //checks needed
-      f->eax = k_readdir(*((int *)f->esp + 1), (char*)*((int *)f->esp + 2), f);
+      f->eax = k_readdir(*((int *)f->esp + 1), (char*)*((int *)f->esp + 2));
       break;
     case SYS_ISDIR:
       //checks needed
-      f->eax = k_isdir(*((int *)f->esp + 1), f);
+      f->eax = k_isdir(*((int *)f->esp + 1));
       break;
     case SYS_INUMBER:
       //checks needed
-      f->eax = k_inumber(*((int *)f->esp + 1), f);
+      f->eax = k_inumber(*((int *)f->esp + 1));
       break;
 
 
