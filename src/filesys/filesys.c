@@ -37,8 +37,11 @@ dir_from_path(const char* path)
   while(cur != NULL)
   {
     struct inode* inode;
-    if(strcmp(prev, ".") == 0) 
+    if(strcmp(prev, ".") == 0) {
+      prev = cur;
+      cur = strtok_r(NULL, "/", &ptr);
       continue;
+    }
     
     if(strcmp(prev, "..") == 0) {
       inode = get_dir_parent_inode(dir);
