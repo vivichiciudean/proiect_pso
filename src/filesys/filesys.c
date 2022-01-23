@@ -177,7 +177,7 @@ filesys_open (const char *name)
   	  }
   	}
     else
-  	  dir_lookup (dir, name, &inode);
+  	  dir_lookup (dir, file_name, &inode);
   }
   dir_close (dir);
   free(file_name);

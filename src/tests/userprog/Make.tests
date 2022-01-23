@@ -13,11 +13,7 @@ close-stdout close-bad-fd read-normal read-bad-ptr read-boundary	\
 read-zero read-stdout read-bad-fd write-normal write-bad-ptr		\
 write-boundary write-zero write-stdin write-bad-fd exec-once exec-arg	\
 exec-multiple exec-missing exec-bad-ptr wait-simple wait-twice		\
-wait-killed wait-bad-pid multi-recurse multi-child-fd rox-simple	\
-rox-child rox-multichild bad-read bad-write bad-read2 bad-write2    \
-bad-jump bad-jump2 multi-join multi-joinall		\
-multi-exit multi-exit-m multi-pid		\
-multi-tid multi-crit	)
+wait-killed wait-bad-pid multi-recurse )
 
 tests/userprog_PROGS = $(tests/userprog_TESTS) $(addprefix \
 tests/userprog/,child-simple child-args child-bad child-close child-rox)

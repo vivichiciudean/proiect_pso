@@ -102,6 +102,8 @@ bool inode_grow(struct inode_disk* inode, off_t length) {
   uint8_t zeros[BLOCK_SECTOR_SIZE] = { 0 };
 
   size_t grow_sectors = bytes_to_sectors(length) - bytes_to_sectors(inode->length);
+ 
+  inode->length = length;
 
   if (grow_sectors == 0)
   {
@@ -179,8 +181,6 @@ bool inode_grow(struct inode_disk* inode, off_t length) {
     block_write(fs_device, inode->blocks[NO_OF_BLOCKS - 1], &level_one);
   }
   
-  inode->length = length;
-
   return true;
 }
 /* List of open inodes, so that opening a single inode twice
@@ -317,7 +317,7 @@ free_inode (struct inode *inode)
     free_map_release(inode->data.blocks[NO_OF_BLOCKS - 2], 1);
   }
 
-  ASSERT(sector_count != inode->data.double_indirect_count);
+  //ASSERT(sector_count != inode->data.double_indirect_count);
 
   // free double indirect blocks
   if (sector_count > 0)
@@ -479,8 +479,11 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   if (inode->deny_write_cnt)
     return 0;
 
+  //printf("inceput de functie: %d %d %d %d \n", bytes_written, offset + size, inode->data.length, size);
+
   // for extandable files (directories do not require a locking mechanism)
   if(offset + size > inode->data.length) {
+    //printf("da 1 \n");
     if(!inode->data.is_dir)
       lock_acquire(&inode->inode_lock);
 
@@ -493,6 +496,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 
   while (size > 0) 
     {
+      //printf("da 2 \n");
       /* Sector to write, starting byte offset within sector. */
       block_sector_t sector_idx = byte_to_sector (inode, offset);
       int sector_ofs = offset % BLOCK_SECTOR_SIZE;
@@ -541,6 +545,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       bytes_written += chunk_size;
     }
   //free (bounce);
+  //printf("final functie: %d %d %d \n", bytes_written, inode->data.length, size);
 
   return bytes_written;
 }

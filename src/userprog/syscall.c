@@ -200,10 +200,26 @@ int k_write (int fd, const void *buffer, unsigned size){
     lock_release(&file_lock);
     return size;
 	}
-  
+
   struct file_struct *file_struct = get_file_struct_for_fd(fd);
+
+
+  
   // e posibil sa fi nevoit sa scrii cate o pagina pe rand!
   if (file_struct != NULL){
+
+    struct file *file = file_struct->file;
+    struct inode* inode = file_get_inode(file);
+    if(inode == NULL) {
+      lock_release(&file_lock);
+      return -1;
+    }
+    if(inode_is_dir(inode)) {
+      lock_release(&file_lock);
+      return -1;
+    }
+
+      
     status = file_write(file_struct->file, buffer, size);
   }
   lock_release(&file_lock);
@@ -309,7 +325,14 @@ bool k_chdir(char *path){
 }
 
 bool k_mkdir(char *path){
-  return  filesys_create(path, 0, true);
+
+  lock_acquire(&file_lock);
+
+  bool status = filesys_create(path, 0, true);
+  //printf("Vine din file create: %s \n",file_name);
+  lock_release(&file_lock);
+
+  return status;
 }
 
 bool k_readdir(int fd, char *path){

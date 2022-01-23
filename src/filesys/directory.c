@@ -157,17 +157,20 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
   /* Check NAME for validity. */
   if (*name == '\0' || strlen (name) > NAME_MAX){
     inode_lock_release(dir_get_inode(dir));
+    //printf("ii bai 0\n");
     return success;
   }
   /* Check that NAME is not in use. */
   if (lookup (dir, name, NULL, NULL)){
     inode_lock_release(dir_get_inode(dir));
+    //printf("ii bai 1\n");
     return success;
   }
 
   /* Set the parent for the added directory */
   if (!inode_set_dir_parent(inode_get_inumber(dir_get_inode(dir)), inode_sector)){
     inode_lock_release(dir_get_inode(dir));
+    //printf("ii bai 2\n");
     return success;
   }
 
@@ -186,6 +189,7 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
   e.in_use = true;
   strlcpy (e.name, name, sizeof e.name);
   e.inode_sector = inode_sector;
+  //printf("%s \n", e.name);
   success = inode_write_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
 
   //printf("am trecut de dir add: %s", e.name);
